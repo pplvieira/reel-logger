@@ -4,7 +4,12 @@ package dk.sdu.scrolllogger.a11y
  * Maps click announcements on Instagram controls to semantic interaction kinds.
  * Prefers labeled buttons (heart / comment / share) over double-tap.
  */
-class InteractionDetector {
+class InteractionDetector(
+    private val debounceMs: Long = 600L,
+) {
+    private var lastKind: String? = null
+    private var lastAt = 0L
+
     fun onClick(node: NodeSnapshot, nowMs: Long = System.currentTimeMillis()): SemanticEvent? {
         val hay = listOfNotNull(node.text, node.contentDescription, node.viewId)
             .joinToString(" ")
@@ -21,6 +26,12 @@ class InteractionDetector {
             hay.contains("profile") || hay.contains("user avatar") -> "profile_open"
             else -> null
         } ?: return null
+
+        if (kind == lastKind && nowMs - lastAt < debounceMs) {
+            return null
+        }
+        lastKind = kind
+        lastAt = nowMs
 
         return SemanticEvent(
             type = "interaction",

@@ -1,8 +1,16 @@
 # Personal scroll logger
 
+**Version:** [0.1.0](VERSION) · see [CHANGELOG.md](CHANGELOG.md) · tag `v0.1.0`
+
 A personal pilot for logging short-form scrolling habits on your own phone. The phone records when a reel appeared, when it left, and which controls you used. A FastAPI service on your PC turns that into sessions and days, and matches optional reel URLs from Instagram’s data download.
 
 This build is for **your own device**. It is not a participant instrument and is not published to an app store.
+
+| Component | Version field |
+| --- | --- |
+| Repo / release tag | `VERSION` → `0.1.0`, git tag `v0.1.0` |
+| Python API | `app.__version__` / `pyproject.toml` → `0.1.0` |
+| Android app | `versionName` `0.1.0`, `LOGGER_VERSION` `0.1.0-android` |
 
 ## What is measured
 
@@ -51,6 +59,13 @@ Enable Accessibility for **Scroll logger (Instagram)**, turn logging on, scroll 
 .\scripts\sync-day.ps1
 ```
 
+Visualize a pulled queue (stats + colored timeline):
+
+```powershell
+pip install -e ".[viz]"
+python scripts\visualize_queue.py data\phone-queue\events-….jsonl --clean
+```
+
 Or configure LAN sync in the app (set `API_TOKEN` + `--host 0.0.0.0` on the PC).
 
 Details: [docs/deploy.md](docs/deploy.md), [docs/android-detector.md](docs/android-detector.md).
@@ -81,7 +96,7 @@ reel-logger/
   tests/
 ```
 
-## Status
+## Status (0.1.0)
 
 | Piece | Status |
 | --- | --- |
@@ -92,4 +107,5 @@ reel-logger/
 | Reconcile by time (+ URL/caption) | Done |
 | Pace notebook | Done |
 | Day sync script + researcher runbook | Done |
+| Detector harden + queue visualizer | Done |
 | TikTok / YouTube Shorts / iOS | Seams / docs only |

@@ -45,4 +45,74 @@ class ReelDetectorTest {
         assertThat(event).isNotNull()
         assertThat(event!!.payload["kind"]).isEqualTo("like")
     }
+
+    @Test
+    fun interactionDebouncesDuplicateClicks() {
+        val detector = InteractionDetector(debounceMs = 600)
+        val node = NodeSnapshot(contentDescription = "Share", clickable = true)
+        assertThat(detector.onClick(node, 1_000)).isNotNull()
+        assertThat(detector.onClick(node, 1_200)).isNull()
+        assertThat(detector.onClick(node, 2_000)).isNotNull()
+    }
+
+    @Test
+    fun extractCaptionIgnoresSendPostChrome() {
+        val caption = ReelDetector.extractCaption(
+            listOf(
+                "Reels",
+                "travel_notes",
+                "Send post. Button. Double-tap to choose who to send this post to.",
+                "Real caption about the harbour",
+            ),
+            "travel_notes",
+        )
+        assertThat(caption).isEqualTo("Real caption about the harbour")
+    }
+
+    @Test
+    fun extractCreatorRejectsEngagementCounts() {
+        val handle = ReelDetector.extractCreator(
+            listOf("Reels", "15.6K", "70.8K", "good_creator", "Some caption text here"),
+        )
+        assertThat(handle).isEqualTo("good_creator")
+    }
+
+    @Test
+    fun shareOverlayDoesNotEndSession() {
+        val detector = ReelDetector(minReelIntervalMs = 0)
+        detector.onTree(FixtureLoader.load("reels_surface.json"), "window", 1_000)
+        val overlay = NodeSnapshot(
+            children = listOf(
+                NodeSnapshot(text = "Send to"),
+                NodeSnapshot(contentDescription = "Send post. Button. Double-tap to choose who to send this post to."),
+                NodeSnapshot(text = "Search"),
+            ),
+        )
+        val events = detector.onTree(overlay, "window", 2_000)
+        assertThat(events).isEmpty()
+        // Still open: next reels tree should not emit session_start again
+        val back = detector.onTree(FixtureLoader.load("reels_surface.json"), "window", 3_000)
+        assertThat(back.map { it.type }).doesNotContain("session_start")
+    }
+
+    @Test
+    fun chromeCaptionChurnDoesNotOpenNewReel() {
+        val detector = ReelDetector(minReelIntervalMs = 0)
+        detector.onTree(FixtureLoader.load("reels_surface.json"), "window", 1_000)
+        val chromeTree = NodeSnapshot(
+            children = listOf(
+                NodeSnapshot(text = "Reels"),
+                NodeSnapshot(text = "For you"),
+                NodeSnapshot(text = "travel_notes"),
+                NodeSnapshot(
+                    contentDescription = "Send post. Button. Double-tap to choose who to send this post to.",
+                ),
+                NodeSnapshot(contentDescription = "Like button", clickable = true),
+                NodeSnapshot(contentDescription = "Comment", clickable = true),
+                NodeSnapshot(contentDescription = "Share", clickable = true),
+            ),
+        )
+        val events = detector.onTree(chromeTree, "content", 2_000)
+        assertThat(events.map { it.type }).doesNotContain("reel_shown")
+    }
 }

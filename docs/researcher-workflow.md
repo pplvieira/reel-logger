@@ -1,5 +1,7 @@
 # Researcher workflow
 
+**Release:** `0.1.0` (git tag `v0.1.0`). Confirm the phone app status line shows `Logger: 0.1.0-android` after `.\scripts\install-phone.ps1`.
+
 Personal pilot for logging Instagram Reels pace on your own Android phone, then analyzing on a PC. Use this runbook for a **new phone**, a **new PC**, or day-to-day capture.
 
 Do **not** commit phone queues, SQLite DBs, Instagram data downloads, `.env`, or `scripts/local.device.json`.
@@ -173,6 +175,14 @@ Never invent dwell from gaps between DYI timestamps.
 ## E. Analysis
 
 - Quick: OpenAPI `/sessions/days`, `/impressions`  
+- Queue timeline (no API needed):
+
+```powershell
+pip install -e ".[viz]"
+python scripts\visualize_queue.py data\phone-queue\events-YYYYMMDD-HHMMSS.jsonl
+python scripts\visualize_queue.py data\phone-queue\events-….jsonl --clean --no-show -o data\phone-queue\day.png
+```
+
 - Notebook: `notebooks/pace_report.ipynb` (set `BASE` / `USER_ID` as needed)
 
 ---

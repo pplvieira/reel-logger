@@ -29,12 +29,13 @@ function Resolve-JavaHome {
         $candidates += $env:JAVA_HOME
     }
 
-    foreach ($home in $candidates) {
-        $java = Join-Path $home "bin\java.exe"
+    foreach ($jdkHome in $candidates) {
+        $java = Join-Path $jdkHome "bin\java.exe"
         if (-not (Test-Path $java)) { continue }
-        $verLine = & $java -version 2>&1 | Out-String
+        # java -version writes to stderr; with $ErrorActionPreference=Stop that becomes a terminating error
+        $verLine = (& cmd /c "`"$java`" -version 2>&1") | Out-String
         if ($verLine -match 'version "(1[7-9]|2[0-1])\.') {
-            return $home
+            return $jdkHome
         }
     }
 
