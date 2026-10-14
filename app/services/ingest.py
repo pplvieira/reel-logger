@@ -26,7 +26,22 @@ def ingest_batch(db: Session, batch: EventBatch) -> IngestResult:
     if batch.logger_version and device.logger_version != batch.logger_version:
         device.logger_version = batch.logger_version
 
+    new_events = []
+    duplicates = 0
     for event in batch.events:
+        if event.event_id:
+            exists = (
+                db.query(RawEvent.id)
+                .filter(
+                    RawEvent.device_id == batch.device_id,
+                    RawEvent.event_id == event.event_id,
+                )
+                .first()
+            )
+            if exists:
+                duplicates += 1
+                continue
+        new_events.append(event)
         db.add(
             RawEvent(
                 user_id=batch.user_id,
@@ -37,7 +52,19 @@ def ingest_batch(db: Session, batch: EventBatch) -> IngestResult:
                 type=event.type,
                 payload=event.payload,
                 capture_method=batch.capture_method,
+                event_id=event.event_id,
             )
+        )
+
+    if not new_events:
+        db.commit()
+        return IngestResult(
+            accepted=0,
+            duplicates=duplicates,
+            sessionized_sessions=0,
+            sessionized_impressions=0,
+            sessionized_interactions=0,
+            ignored_event_types=[],
         )
 
     try:
@@ -48,7 +75,7 @@ def ingest_batch(db: Session, batch: EventBatch) -> IngestResult:
                     "observed_at": e.observed_at,
                     "payload": e.payload,
                 }
-                for e in batch.events
+                for e in new_events
             ),
             user_id=batch.user_id,
             device_id=batch.device_id,
@@ -107,7 +134,8 @@ def ingest_batch(db: Session, batch: EventBatch) -> IngestResult:
 
     db.commit()
     return IngestResult(
-        accepted=len(batch.events),
+        accepted=len(new_events),
+        duplicates=duplicates,
         sessionized_sessions=len(derived.sessions),
         sessionized_impressions=len(derived.impressions),
         sessionized_interactions=len(derived.interactions),

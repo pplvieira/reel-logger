@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Scroll logger</string>
+    <string name="a11y_service_label">Scroll logger (Instagram)</string>
+    <string name="a11y_service_description">Records when Instagram Reels appear and leave, plus like/comment/share taps, as semantic events on this device. Only Instagram is observed. Logging stays visible via a notification.</string>
+    <string name="notification_channel_name">Scroll logging</string>
+    <string name="notification_title">Scroll logger on</string>
+    <string name="notification_text">Recording Instagram Reels pace on this phone</string>
+</resources>

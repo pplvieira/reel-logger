@@ -3,12 +3,13 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_token
 from app.core.db import get_db
 from app.schemas.reporting import ImpressionOut
 from app.services.reconcile import ReconcileResult, reconcile_impressions
 from app.services.reporting import list_impressions
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_api_token)])
 
 
 @router.get("", response_model=list[ImpressionOut])

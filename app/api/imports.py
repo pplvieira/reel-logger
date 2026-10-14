@@ -3,15 +3,19 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_token
 from app.core.db import get_db
 from app.models import ContentRecord, User
-from app.services.importers.dyi import parse_videos_watched_document
+from app.services.importers.dyi import (
+    parse_liked_or_saved_document,
+    parse_videos_watched_document,
+)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_api_token)])
 
 
 class DyiImportRequest(BaseModel):
@@ -19,9 +23,10 @@ class DyiImportRequest(BaseModel):
 
     user_id: str
     platform: str = "instagram"
+    source: str = "dyi"
     document: Any = Field(
         ...,
-        description="Parsed videos_watched.json body (array or wrapped object)",
+        description="Parsed videos_watched.json / liked_posts.json body",
     )
 
 
@@ -31,15 +36,7 @@ class DyiImportResult(BaseModel):
     without_url: int
 
 
-@router.post("/dyi/videos-watched", response_model=DyiImportResult)
-def import_dyi_videos_watched(
-    body: DyiImportRequest,
-    db: Session = Depends(get_db),
-) -> DyiImportResult:
-    if db.get(User, body.user_id) is None:
-        raise HTTPException(status_code=404, detail=f"Unknown user_id: {body.user_id}")
-
-    rows = parse_videos_watched_document(body.document)
+def _insert_rows(db: Session, user_id: str, platform: str, source: str, rows) -> DyiImportResult:
     with_url = 0
     without_url = 0
     for row in rows:
@@ -47,20 +44,58 @@ def import_dyi_videos_watched(
             with_url += 1
         else:
             without_url += 1
+        raw = dict(row.raw_json)
+        if row.caption is not None:
+            raw = {**raw, "_parsed_caption": row.caption}
+        if row.fbid is not None:
+            raw = {**raw, "_parsed_fbid": row.fbid}
         db.add(
             ContentRecord(
-                user_id=body.user_id,
-                platform=body.platform,
-                source="dyi",
+                user_id=user_id,
+                platform=platform,
+                source=source,
                 creator_handle=row.creator_handle,
                 external_url=row.external_url,
                 watched_at=row.watched_at,
                 time_precision=row.time_precision,
-                raw_json=row.raw_json,
+                raw_json=raw,
             )
         )
     db.commit()
     return DyiImportResult(inserted=len(rows), with_url=with_url, without_url=without_url)
+
+
+@router.post("/dyi/videos-watched", response_model=DyiImportResult)
+def import_dyi_videos_watched(
+    body: DyiImportRequest,
+    db: Session = Depends(get_db),
+) -> DyiImportResult:
+    if db.get(User, body.user_id) is None:
+        raise HTTPException(status_code=404, detail=f"Unknown user_id: {body.user_id}")
+    rows = parse_videos_watched_document(body.document)
+    return _insert_rows(db, body.user_id, body.platform, body.source or "dyi", rows)
+
+
+@router.post("/dyi/liked-posts", response_model=DyiImportResult)
+def import_dyi_liked_posts(
+    body: DyiImportRequest,
+    db: Session = Depends(get_db),
+) -> DyiImportResult:
+    if db.get(User, body.user_id) is None:
+        raise HTTPException(status_code=404, detail=f"Unknown user_id: {body.user_id}")
+    rows = parse_liked_or_saved_document(body.document)
+    return _insert_rows(db, body.user_id, body.platform, "dyi_liked", rows)
+
+
+@router.post("/dyi/saved-posts", response_model=DyiImportResult)
+def import_dyi_saved_posts(
+    body: DyiImportRequest,
+    db: Session = Depends(get_db),
+) -> DyiImportResult:
+    if db.get(User, body.user_id) is None:
+        raise HTTPException(status_code=404, detail=f"Unknown user_id: {body.user_id}")
+    rows = parse_liked_or_saved_document(body.document)
+    return _insert_rows(db, body.user_id, body.platform, "dyi_saved", rows)
 
 
 class ManualUrlRequest(BaseModel):

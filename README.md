@@ -1,6 +1,6 @@
 # Personal scroll logger
 
-A personal pilot for logging short-form scrolling habits on your own phone. The phone records when a reel appeared, when it left, and which controls you used. A FastAPI service on your PC turns that into sessions and days, and later can match optional reel URLs from Instagram’s data download.
+A personal pilot for logging short-form scrolling habits on your own phone. The phone records when a reel appeared, when it left, and which controls you used. A FastAPI service on your PC turns that into sessions and days, and matches optional reel URLs from Instagram’s data download.
 
 This build is for **your own device**. It is not a participant instrument and is not published to an app store.
 
@@ -8,26 +8,13 @@ This build is for **your own device**. It is not a participant instrument and is
 
 | Source | What you get | What you do not get |
 | --- | --- | --- |
-| Live phone logger (Android, next milestone) | Session start/end, per-reel dwell, like / comment / share / send when the UI exposes them | Reliable reel URL on For You |
-| Instagram Watch History / Download your information | Creator + watch time; sometimes a URL | Dwell time; guaranteed URL for every watch |
+| Live phone logger (Android) | Session start/end, per-reel dwell, like / comment / share / send when the UI exposes them | Reliable reel URL on For You live |
+| Instagram Download your information (`videos_watched.json`) | URL + watch timestamp (+ caption/fbid in current exports) | Dwell time; Author may be absent |
 | Screen Time (iOS, later) | Coarse “Instagram was open” sessions | Per-reel index, dwell, or URL |
 
-The wire format is **semantic**: clients post `session_start`, `session_end`, `reel_shown`, `reel_hidden`, and `interaction`. Android view ids and accessibility dumps stay on the phone. That keeps a later iOS client from forcing a schema rewrite. See [docs/event-schema.md](docs/event-schema.md) and [docs/ios.md](docs/ios.md).
+The wire format is **semantic**: clients post `session_start`, `session_end`, `reel_shown`, `reel_hidden`, and `interaction`. See [docs/event-schema.md](docs/event-schema.md).
 
-## Repo layout
-
-```
-reel-logger/
-  app/                 FastAPI service (code-first models)
-  docs/                Feasibility, architecture, schema, deploy, privacy, iOS
-  scripts/             Phone install helpers (Android)
-  tests/               Sessionize, day bucketing, DYI fixtures
-  alembic/             Migrations generated from SQLAlchemy models
-```
-
-Heavy analysis (plots, long-run pace summaries) stays in notebooks on the PC. The API serves rows and a few session/day aggregates.
-
-## Quick start (PC service)
+## Quick start (PC)
 
 ```powershell
 cd reel-logger
@@ -41,29 +28,68 @@ uvicorn app.main:app --reload
 
 - Health: `GET http://127.0.0.1:8000/health`
 - OpenAPI: `http://127.0.0.1:8000/docs`
-- Default database: SQLite at `./data/reel_logger.db`
-- Set `DATABASE_URL` later for Postgres / Supabase
 
-## Phone updates (Android, later)
+## Researcher runbook
 
-Documented in [docs/deploy.md](docs/deploy.md). Priority is a one-command wireless reinstall via `scripts/install-phone.ps1` so each debug build replaces the app and keeps the on-phone queue. The Android listener is the next milestone after this skeleton.
+**Start here for a new phone or daily loop:** [docs/researcher-workflow.md](docs/researcher-workflow.md)
 
-## Documentation
+## Android logger
 
-- [docs/feasibility.md](docs/feasibility.md) — live log vs Watch History vs data download
-- [docs/architecture.md](docs/architecture.md) — clients, ingest, sessionizer, importers
-- [docs/event-schema.md](docs/event-schema.md) — tables, event types, `capture_method`
-- [docs/deploy.md](docs/deploy.md) — Android wireless install (Android-only)
-- [docs/ios.md](docs/ios.md) — later iOS path without rewriting the server
-- [docs/privacy.md](docs/privacy.md) — on-device consent, localhost API, no screenshots
+```powershell
+copy android\keystore.properties.example android\keystore.properties
+.\scripts\generate-debug-keystore.ps1
+# Open android/ in Android Studio once if gradlew is missing; set Gradle JDK = 17
+.\scripts\install-phone.ps1
+python scripts\register_device.py
+copy scripts\local.device.json.example scripts\local.device.json
+# edit local.device.json with the printed user_id / device_id
+```
+
+Enable Accessibility for **Scroll logger (Instagram)**, turn logging on, scroll Reels, then:
+
+```powershell
+.\scripts\sync-day.ps1
+```
+
+Or configure LAN sync in the app (set `API_TOKEN` + `--host 0.0.0.0` on the PC).
+
+Details: [docs/deploy.md](docs/deploy.md), [docs/android-detector.md](docs/android-detector.md).
+
+## Instagram DYI catalog
+
+```powershell
+python scripts\import_dyi.py --export-root "C:\path\to\your-unzipped-instagram-export"
+```
+
+Watch history is under `ads_information/ads_and_topics/videos_watched.json` (not only `your_instagram_activity/`). Then:
+
+`POST /impressions/reconcile?user_id=…` — matches by time window; never invents dwell from export gaps.
+
+## Pace notebook
+
+See [notebooks/pace_report.ipynb](notebooks/pace_report.ipynb).
+
+## Repo layout
+
+```
+reel-logger/
+  android/             Kotlin accessibility logger
+  app/                 FastAPI service
+  docs/                researcher-workflow + design docs
+  scripts/             install / pull / sync-day / ingest / DYI import
+  notebooks/
+  tests/
+```
 
 ## Status
 
 | Piece | Status |
 | --- | --- |
-| FastAPI models, ingest, sessionize stubs | This repo |
-| Instagram DYI importer contract | Stub + fixtures |
-| Android accessibility logger | Next milestone |
-| TikTok / YouTube Shorts adapters | Empty stubs |
-| iOS Screen Time client | Documented only |
-| Supabase / multi-user | Seam via `DATABASE_URL` and `user_id` |
+| FastAPI ingest / sessionize / reporting | Done |
+| Android accessibility logger + JSONL queue | Done (build on machine with Android SDK) |
+| LAN sync + API token + event_id dedupe | Done |
+| DYI import for real `videos_watched` shape | Done |
+| Reconcile by time (+ URL/caption) | Done |
+| Pace notebook | Done |
+| Day sync script + researcher runbook | Done |
+| TikTok / YouTube Shorts / iOS | Seams / docs only |

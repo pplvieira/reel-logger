@@ -33,9 +33,10 @@ Dwell is the interval between `reel_shown` and `reel_hidden`, minus time the app
 **Download your information** (JSON):
 
 - Typical path: `ads_information/ads_and_topics/videos_watched.json` (older archives: `impressions_history_videos_watched`)
-- Fields vary by export: some dumps include an `href`, many have only account name + timestamp
-- The importer keeps the raw object and fills `external_url` only when a link is present
-- Likes, comments, and saves in the same download more often include a media link than passive watches
+- A 2026 personal export had **URL on every videos_watched row** (many `/reel/…`), plus `timestamp`, `fbid`, and often `Caption`, but **no Author**
+- Fields still vary by export; the importer keeps the raw object and fills `external_url` only when a link is present
+- Likes/saves under `your_instagram_activity/` are sparse; they are not a substitute for `videos_watched`
+- Inter-row timestamp gaps are often 0–1s — **never** treat them as dwell
 
 **Matching rule** (later, in `reconcile`): same user, same platform, same creator, watch time near impression start. Two reels from one creator close together stay `ambiguous` — never a guessed URL.
 

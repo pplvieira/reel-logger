@@ -3,12 +3,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_token
 from app.core.db import get_db
 from app.models import Device, User
 from app.schemas.events import DeviceCreate, DeviceOut, UserOut
 from app.services.ingest import ensure_seed_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_api_token)])
 
 
 @router.get("/users/me", response_model=UserOut)

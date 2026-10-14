@@ -1,0 +1,23 @@
+[
+  {
+    "timestamp": 1728900000,
+    "fbid": "123",
+    "media": [],
+    "label_values": [
+      {"label": "Ad library public URL", "value": ""},
+      {"label": "Brand partner", "vec": []},
+      {"label": "URL", "value": "https://www.instagram.com/reel/ABC123/", "href": "https://www.instagram.com/reel/ABC123/"},
+      {"label": "Caption", "value": "A sample caption about coffee"},
+      {"label": "Title", "value": ""}
+    ]
+  },
+  {
+    "timestamp": 1728900060,
+    "fbid": "456",
+    "media": [],
+    "label_values": [
+      {"label": "URL", "value": "https://www.instagram.com/p/XYZ789/", "href": "https://www.instagram.com/p/XYZ789/"},
+      {"label": "Caption", "value": "No author field in this export shape"}
+    ]
+  }
+]

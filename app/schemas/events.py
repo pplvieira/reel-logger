@@ -45,6 +45,7 @@ class EventIn(BaseModel):
     type: str = Field(..., min_length=1, max_length=64)
     observed_at: datetime
     payload: dict[str, Any] = Field(default_factory=dict)
+    event_id: Optional[str] = Field(default=None, max_length=36)
 
     @field_validator("payload")
     @classmethod
@@ -68,6 +69,7 @@ class EventBatch(BaseModel):
 
 class IngestResult(BaseModel):
     accepted: int
+    duplicates: int = 0
     sessionized_sessions: int
     sessionized_impressions: int
     sessionized_interactions: int

@@ -1,50 +1,68 @@
 # Deploy — Android phone updates
 
-**Android-only.** iOS install is not covered here; see [ios.md](ios.md).
+**Android-only.** Package id: `dk.sdu.scrolllogger`. iOS: see [ios.md](ios.md).
 
-Goal: make iterating on the phone logger a one-command reinstall so development stays fast.
+Goal: one-command reinstall so development stays fast.
 
-## Principles
+## Prerequisites
 
-- Stable `applicationId` and the same debug keystore across builds so each install **replaces** the app and keeps the on-phone event queue.
-- Wireless debugging after a one-time USB pair: `adb connect <phone-ip>:<port>`.
-- Service / schema changes on the PC do **not** require a phone rebuild. Only the Kotlin listener does.
+- Android Studio (or SDK + JDK 17)
+- Phone with Developer options + Wireless debugging
+- Generate debug keystore once: `.\scripts\generate-debug-keystore.ps1`
+- Open `android/` in Android Studio once if `gradlew.bat` is missing (File → Open → let it sync / create wrapper)
 
-## One-time setup (when the Android module exists)
+## One-time phone setup
 
-1. Enable Developer options and Wireless debugging on the phone.
-2. Pair once over USB or with the pairing code from Wireless debugging.
+1. Enable Developer options and Wireless debugging.
+2. Pair once (USB or pairing code), then `adb connect <phone-ip>:<port>`.
 3. Confirm `adb devices` shows the phone.
-4. On Android 13+, allow restricted settings for the sideloaded logger so Accessibility can be enabled.
-5. Enable the Accessibility service for the logger and keep the “logging on” notification visible while capturing.
+4. Install: `.\scripts\install-phone.ps1`
+5. On Android 13+, allow **restricted settings** for Scroll logger, then enable **Accessibility → Scroll logger (Instagram)**.
+6. Open the app → turn **Logging on** (notification must stay visible).
+7. Register device against the PC API:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload
+# other terminal:
+python scripts\register_device.py
+```
+
+Enter printed `user_id` / `device_id` in the app sync config.
 
 ## Daily update path
-
-From the repo root (after the Android module is added):
 
 ```powershell
 .\scripts\install-phone.ps1
 ```
 
-That script runs `gradlew installDebug` against the connected device (wireless or USB). Prefer this over Android Studio Run for repeatability.
+Stable `applicationId` + a **local** `android/debug.keystore` (gitignored; generate with `scripts/generate-debug-keystore.ps1`) keep the on-phone queue across reinstalls on the same PC.
 
-Optional:
-
-```powershell
-.\scripts\install-phone.ps1 -Serial <adb-serial>
-```
-
-## PC service reload
+## Pull queue (offline path)
 
 ```powershell
-uvicorn app.main:app --reload
+.\scripts\pull-queue.ps1
+python scripts\ingest_queue.py data\phone-queue\events-XXXX.jsonl --user-id <id> --device-id <id>
 ```
 
-Parsing, matching, and reports change without touching the phone.
+## LAN sync
+
+1. Set `API_TOKEN` in `.env` (recommended on LAN).
+2. Run API bound to the LAN: `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+3. In the app: base URL `http://<pc-lan-ip>:8000`, user/device ids, token → **Save** → **Sync now**.
+
+## Import Instagram DYI catalog
+
+```powershell
+python scripts\import_dyi.py --export-root "C:\path\to\your-unzipped-instagram-export"
+```
+
+Do not commit the export into git.
 
 ## Checklist after install
 
-- [ ] App replaces previous build (same package)
-- [ ] Accessibility still enabled (Android may ask again after some updates)
-- [ ] Logging notification appears when capture is on
-- [ ] Test batch reaches `POST /ingest/events` (when wireless sync is wired)
+- [ ] App replaces previous build (`dk.sdu.scrolllogger`)
+- [ ] Accessibility still enabled
+- [ ] Logging notification visible when capture is on
+- [ ] Queue line count increases after scrolling Reels
+- [ ] Pull or sync reaches `POST /ingest/events`

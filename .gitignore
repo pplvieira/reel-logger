@@ -25,9 +25,14 @@ htmlcov/
 *.db
 *.sqlite
 *.sqlite3
-data/
+data/*
+!data/dyi/
+!data/dyi/.gitkeep
 exports/
 *.csv
+# Never commit personal Instagram DYI dumps
+**/instagram-*/
+**/videos_watched.json
 
 # IDE / OS
 .idea/
@@ -54,9 +59,12 @@ out/
 .navigation/
 *.jks
 *.keystore
-!debug.keystore
+# Do not commit personal debug keystores (generate locally via scripts/generate-debug-keystore.ps1)
 
-# Secrets
+# Secrets / local researcher config
 credentials.json
 secrets/
 gitlab-recovery-codes.txt
+scripts/local.device.json
+keystore.properties
+android/keystore.properties

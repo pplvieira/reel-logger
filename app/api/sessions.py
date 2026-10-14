@@ -3,11 +3,12 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.core.auth import require_api_token
 from app.core.db import get_db
 from app.schemas.reporting import DaySummary, SessionOut
 from app.services.reporting import day_summaries, list_sessions
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_api_token)])
 
 
 @router.get("", response_model=list[SessionOut])

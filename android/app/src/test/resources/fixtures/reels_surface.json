@@ -1,0 +1,48 @@
+{
+  "text": null,
+  "contentDescription": null,
+  "viewId": null,
+  "className": "android.widget.FrameLayout",
+  "clickable": false,
+  "selected": false,
+  "children": [
+    {
+      "text": "Reels",
+      "contentDescription": null,
+      "children": []
+    },
+    {
+      "text": "For you",
+      "contentDescription": null,
+      "children": []
+    },
+    {
+      "text": "travel_notes",
+      "contentDescription": null,
+      "children": []
+    },
+    {
+      "text": "Sunset over the harbour — perfect evening light",
+      "contentDescription": null,
+      "children": []
+    },
+    {
+      "text": null,
+      "contentDescription": "Like button",
+      "clickable": true,
+      "children": []
+    },
+    {
+      "text": null,
+      "contentDescription": "Comment",
+      "clickable": true,
+      "children": []
+    },
+    {
+      "text": null,
+      "contentDescription": "Share",
+      "clickable": true,
+      "children": []
+    }
+  ]
+}

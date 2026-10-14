@@ -71,6 +71,8 @@ class RawEvent(Base):
     type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(PortableJSON, nullable=False, default=dict)
     capture_method: Mapped[str] = mapped_column(String(32), nullable=False)
+    # Client-supplied idempotency key (phone JSONL event_id)
+    event_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, index=True)
 
 
 class Impression(Base):
