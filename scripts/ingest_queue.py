@@ -31,7 +31,7 @@ def main() -> None:
             "user_id": args.user_id,
             "platform": "instagram",
             "capture_method": "accessibility",
-            "logger_version": "0.1.0-android",
+            "logger_version": "0.1.1-android",
             "events": [
                 {
                     "type": e["type"],

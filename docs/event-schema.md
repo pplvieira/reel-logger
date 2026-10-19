@@ -163,4 +163,15 @@ From DYI, pasted URL, or Watch History dump.
 }
 ```
 
-Debug type `raw_a11y` (Android calibration) is stored only as raw JSON and is ignored by `sessionize`.
+### Debug type `raw_a11y`
+
+Optional Android evidence dump (enable **Debug raw_a11y** in the app). Stored in JSONL / `raw_events` and **ignored by `sessionize`**. Offline L2 (`preprocess_queue.py`) uses it for identity when present.
+
+| Era | Typical payload |
+| --- | --- |
+| B | `texts_sample`: list of visible strings |
+| C (`0.1.1-android`+) | `texts_sample` **and** `nodes[]` with `text` / `content_desc` / `bounds` / optional `screen` |
+
+On-device `reel_shown` creator/caption fields remain convenience hints (`identity_source` / `payload.hints`); prefer PC extractors when raw samples exist.
+
+Offline derived CSV columns (L2/L3): [architecture.md](architecture.md).

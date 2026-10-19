@@ -16,6 +16,10 @@ class ReelDetectorTest {
         val shown = events.first { it.type == "reel_shown" }
         assertThat(shown.payload["creator_handle"]).isEqualTo("travel_notes")
         assertThat(shown.payload["confidence"]).isEqualTo(0.9)
+        assertThat(shown.payload["identity_source"]).isEqualTo("on_device_heuristic_v1")
+        @Suppress("UNCHECKED_CAST")
+        val hints = shown.payload["hints"] as Map<String, Any?>
+        assertThat(hints["creator_handle"]).isEqualTo("travel_notes")
     }
 
     @Test

@@ -41,7 +41,7 @@ def main() -> None:
             "user_id": user["id"],
             "platform_os": "android",
             "label": args.label,
-            "logger_version": "0.1.0-android",
+            "logger_version": "0.1.1-android",
         },
     )
     print(json.dumps({"user_id": user["id"], "device_id": device["id"]}, indent=2))

@@ -28,9 +28,33 @@ class EventQueue(private val dir: File) {
         event.put("event_id", UUID.randomUUID().toString())
         event.put("type", type)
         event.put("observed_at", isoUtc(observedAtMs))
-        event.put("payload", JSONObject(payload.filterValues { it != null }))
+        event.put("payload", toJson(payload.filterValues { it != null }))
         lock.withLock {
             queueFile.appendText(event.toString() + "\n")
+        }
+    }
+
+    /** Deep-convert nested Map/List values so hints/nodes survive JSONL. */
+    private fun toJson(value: Any?): Any? {
+        return when (value) {
+            null -> null
+            is Map<*, *> -> {
+                val obj = JSONObject()
+                for ((k, v) in value) {
+                    if (k == null || v == null) continue
+                    obj.put(k.toString(), toJson(v))
+                }
+                obj
+            }
+            is List<*> -> {
+                val arr = org.json.JSONArray()
+                for (item in value) {
+                    arr.put(toJson(item))
+                }
+                arr
+            }
+            is Boolean, is Int, is Long, is Double, is Float, is String -> value
+            else -> value.toString()
         }
     }
 

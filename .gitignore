@@ -28,6 +28,8 @@ htmlcov/
 data/*
 !data/dyi/
 !data/dyi/.gitkeep
+# Derived preprocess/merge outputs (L2/L3) — never commit
+data/derived/
 exports/
 *.csv
 # Never commit personal Instagram DYI dumps

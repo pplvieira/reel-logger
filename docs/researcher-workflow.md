@@ -1,10 +1,12 @@
 # Researcher workflow
 
-**Release:** `0.1.0` (git tag `v0.1.0`). Confirm the phone app status line shows `Logger: 0.1.0-android` after `.\scripts\install-phone.ps1`.
+**Release:** Python/API `0.1.0` (git tag `v0.1.0`); Android logger `0.1.1-android`. After `.\scripts\install-phone.ps1`, the app status line should show `Logger: 0.1.1-android`.
 
 Personal pilot for logging Instagram Reels pace on your own Android phone, then analyzing on a PC. Use this runbook for a **new phone**, a **new PC**, or day-to-day capture.
 
-Do **not** commit phone queues, SQLite DBs, Instagram data downloads, `.env`, or `scripts/local.device.json`.
+**Capture-max / process-on-PC:** keep raw JSONL + DYI immutable (L0); derive impressions (L2) and DYI links (L3) offline. Prefer L3 plots for analysis figures.
+
+Do **not** commit phone queues, SQLite DBs, Instagram data downloads, `data/derived/`, `.env`, or `scripts/local.device.json`.
 
 ---
 
@@ -79,6 +81,7 @@ You want a line ending in `device`. Same phone may appear twice (IP + `adb-tls-�
 2. Android 13+: allow **restricted settings** for the app if asked  
 3. **Accessibility → Scroll logger (Instagram)** → ON  
 4. In the app: **Logging on** → notification “Scroll logger on” must stay visible  
+5. Optional but recommended for research: enable **Debug raw_a11y** so era-C tree samples (`nodes[]` + bounds) land in the JSONL for PC identity (off by default)
 
 ### 4. Register the device with the API
 
@@ -162,28 +165,60 @@ Watch history lives under the export’s
 `ads_information/ads_and_topics/videos_watched.json`  
 (not only `your_instagram_activity/`). It has URLs + timestamps, **not** dwell.
 
+**Important:** the export only covers watches up to when Meta generated it. If logging started *after* that cutoff, time-merge will find **zero** overlap — request a new download that covers the logging days.
+
+### Offline pipeline (L2 preprocess → L3 merge)
+
+Raw JSONL and DYI zips are **never overwritten**. Stages print clear banners.
+
+```powershell
+# L2 — derived impressions (auditable flags; raw untouched)
+python scripts\preprocess_queue.py data\phone-queue\events-….jsonl --min-dwell-ms 500
+# writes data\derived\<run_id>\impressions.csv + preprocess_manifest.json
+
+# L3 — link derived + DYI by time (no dwell from DYI)
+python scripts\merge_sources.py data\derived\<run_id>\impressions.csv `
+  --export-root "C:\path\to\unzipped-instagram-export"
+# writes data\derived\<run_id>\merged.csv
+```
+
+`compare_logger_dyi.py` remains a thin alias that runs preprocess+merge for one-shot use.
+
+Via API (after ingest):
+
 ```powershell
 python scripts\import_dyi.py --export-root "C:\path\to\unzipped-instagram-export"
-# then in /docs:
 # POST /impressions/reconcile?user_id=YOUR-USER-UUID
 ```
 
-Never invent dwell from gaps between DYI timestamps.
+Never invent dwell from gaps between DYI timestamps. Layers: [architecture.md](architecture.md).
 
 ---
 
 ## E. Analysis
 
 - Quick: OpenAPI `/sessions/days`, `/impressions`  
-- Queue timeline (no API needed):
+- Prefer plotting **L3 merged** (or L2 derived), not raw JSONL, for analysis figures.  
+- Timeline x-axes use **absolute clock time** in an IANA zone (`--tz`, default `Europe/Copenhagen`; use `--tz UTC` for UTC hours).  
+- L3 merged timeline:
 
 ```powershell
 pip install -e ".[viz]"
-python scripts\visualize_queue.py data\phone-queue\events-YYYYMMDD-HHMMSS.jsonl
-python scripts\visualize_queue.py data\phone-queue\events-….jsonl --clean --no-show -o data\phone-queue\day.png
+python scripts\visualize_merged.py data\derived\<run_id>\merged.csv --tz Europe/Copenhagen
+python scripts\visualize_merged.py data\derived\<run_id>\merged.csv `
+  --hide-dyi-only --no-show -o data\derived\<run_id>\merged_timeline.png
+# --matched-only = only match_status=matched; --hide-dyi-only drops unmatched DYI rows
+```
+
+- Raw phone JSONL timeline (debug / capture QA only):
+
+```powershell
+python scripts\visualize_queue.py data\phone-queue\events-YYYYMMDD-HHMMSS.jsonl --clean --tz Europe/Copenhagen
 ```
 
 - Notebook: `notebooks/pace_report.ipynb` (set `BASE` / `USER_ID` as needed)
+
+Layers and CSV columns: [architecture.md](architecture.md).
 
 ---
 
@@ -209,5 +244,7 @@ PC-only changes (API, import, notebook): restart/reload uvicorn — no phone rei
 | Empty pull file | Scroll with logging on; confirm queue count in app |
 | API 404 on ingest | Wrong `user_id`/`device_id`; re-run `register_device.py` |
 | USB never asks for debugging | Use Wireless debugging (section B.1) |
+| Merge finds 0 matches | DYI export cutoff before logging days — request a new download covering those dates |
+| Creator looks like `Repost` / `SeekBar` | Era-A/B hint noise; re-preprocess with era-C JSONL (Debug raw_a11y on) |
 
 More detail: [deploy.md](deploy.md), [android-detector.md](android-detector.md), [feasibility.md](feasibility.md).

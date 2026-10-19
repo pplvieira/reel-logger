@@ -82,10 +82,15 @@ class ScrollAccessibilityService : AccessibilityService() {
         try {
             val tree = NodeMapper.from(root) ?: return
             if (app.prefs.debugRawA11y && eventKind != "content") {
+                val dm = resources.displayMetrics
                 emit(
                     SemanticEvent(
                         type = "raw_a11y",
-                        payload = NodeMapper.debugSummary(tree),
+                        payload = NodeMapper.debugSummary(
+                            tree,
+                            screenWidth = dm.widthPixels,
+                            screenHeight = dm.heightPixels,
+                        ),
                         observedAtMs = now,
                     ),
                 )

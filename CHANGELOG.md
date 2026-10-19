@@ -5,6 +5,22 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Layered offline pipeline: `preprocess_queue.py` (L2) and `merge_sources.py` (L3); raw archives immutable
+- Android `0.1.1-android`: `raw_a11y` nodes with bounds + `texts_sample`; on-device identity marked as hints
+- `visualize_merged.py` for L3 `merged.csv` timelines (match status + logger dwell)
+- PC phrase identity in preprocess (`Reel by X`, profile-picture labels, …) with chrome-token denylist
+
+### Changed
+
+- Docs: L0–L3 architecture, derived CSV columns, source-of-truth matrix, capture-max / process-on-PC
+- Researcher runbook: Android `0.1.1-android`, Debug raw_a11y, clock-time viz (`--tz`)
+- `compare_logger_dyi.py` is a thin alias for preprocess → merge
+- Timeline scripts: absolute clock x-axis via `--tz` (default `Europe/Copenhagen`; use `UTC` for UTC)
+
 ## [0.1.0] — 2026-10-14
 
 First tagged personal pilot release.

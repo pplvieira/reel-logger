@@ -154,12 +154,23 @@ class ReelDetector(
                 out += SemanticEvent("reel_hidden", observedAtMs = nowMs)
             }
             val confidence = confidence(creator, caption, surface)
+            val captionTrim = caption?.take(240)
+            // Timing event: keep top-level fields for old ingest/sessionize,
+            // but mark identity as on-device heuristic hints (PC prefers raw_a11y).
             out += SemanticEvent(
                 "reel_shown",
                 payload = buildMap {
                     if (creator != null) put("creator_handle", creator)
-                    if (caption != null) put("caption_excerpt", caption.take(240))
+                    if (captionTrim != null) put("caption_excerpt", captionTrim)
                     put("confidence", confidence)
+                    put("identity_source", "on_device_heuristic_v1")
+                    put(
+                        "hints",
+                        buildMap<String, Any?> {
+                            if (creator != null) put("creator_handle", creator)
+                            if (captionTrim != null) put("caption_excerpt", captionTrim)
+                        },
+                    )
                     if (looksSponsored(caption, texts)) put("is_sponsored", true)
                     if (looksSuggested(caption, texts)) put("is_suggested", true)
                 },

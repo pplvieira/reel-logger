@@ -14,8 +14,9 @@ import statistics
 import sys
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 
 EVENT_COLORS = {
@@ -245,8 +246,15 @@ def print_stats(events: list[Event], sessions: list[Session]) -> None:
             )
 
 
-def plot_timeline(events: list[Event], sessions: list[Session], out: Path | None, show: bool) -> None:
+def plot_timeline(
+    events: list[Event],
+    sessions: list[Session],
+    out: Path | None,
+    show: bool,
+    tz_name: str = "Europe/Copenhagen",
+) -> None:
     try:
+        import matplotlib.dates as mdates
         import matplotlib.pyplot as plt
         from matplotlib.lines import Line2D
     except ImportError:
@@ -257,8 +265,18 @@ def plot_timeline(events: list[Event], sessions: list[Session], out: Path | None
         print("No events to plot", file=sys.stderr)
         return
 
-    t0 = events[0].observed_at
-    xs: list[float] = []
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        print(f"Unknown timezone {tz_name!r}", file=sys.stderr)
+        return
+
+    local_events = [
+        Event(e.event_id, e.type, e.observed_at.astimezone(tz), e.payload) for e in events
+    ]
+    t0 = local_events[0].observed_at
+    t1 = local_events[-1].observed_at
+    xs: list[datetime] = []
     ys: list[float] = []
     colors: list[str] = []
     labels: list[str] = []
@@ -280,10 +298,9 @@ def plot_timeline(events: list[Event], sessions: list[Session], out: Path | None
         sharex=True,
     )
 
-    for e in events:
-        sec = (e.observed_at - t0).total_seconds()
+    for e in local_events:
         y = y_map.get(e.type, 0.5)
-        xs.append(sec)
+        xs.append(e.observed_at)
         ys.append(y)
         colors.append(EVENT_COLORS.get(e.type, "#333333"))
         if e.type == "interaction":
@@ -296,24 +313,23 @@ def plot_timeline(events: list[Event], sessions: list[Session], out: Path | None
         else:
             labels.append("")
 
-    x_max = max(xs) if xs else 1.0
-    x_pad = max(1.0, x_max * 0.02)
+    span_s = max((t1 - t0).total_seconds(), 1.0)
+    x_pad = timedelta(seconds=max(60.0, span_s * 0.02))
 
     ax_tl.scatter(xs, ys, c=colors, s=28, alpha=0.85, zorder=3)
 
     # Session spans as background bands (both panels)
     for i, s in enumerate(sessions):
-        end = s.ended_at or events[-1].observed_at
-        x0 = (s.started_at - t0).total_seconds()
-        x1 = (end - t0).total_seconds()
+        end = (s.ended_at or events[-1].observed_at).astimezone(tz)
+        start = s.started_at.astimezone(tz)
         band = "#dddddd" if i % 2 == 0 else "#eeeeee"
-        ax_tl.axvspan(x0, x1, color=band, alpha=0.7, zorder=0)
-        ax_dwell.axvspan(x0, x1, color=band, alpha=0.7, zorder=0)
+        ax_tl.axvspan(start, end, color=band, alpha=0.7, zorder=0)
+        ax_dwell.axvspan(start, end, color=band, alpha=0.7, zorder=0)
 
     # Annotate a sparse sample of interactions / reel_shown
     annotate_budget = 18
-    step = max(1, len(events) // annotate_budget)
-    for i, (x, y, lab, e) in enumerate(zip(xs, ys, labels, events)):
+    step = max(1, len(local_events) // annotate_budget)
+    for i, (x, y, lab, e) in enumerate(zip(xs, ys, labels, local_events)):
         if not lab:
             continue
         if e.type not in ("interaction", "reel_shown", "session_end"):
@@ -334,35 +350,42 @@ def plot_timeline(events: list[Event], sessions: list[Session], out: Path | None
     ax_tl.set_yticks([0.5, 1.5, 2.5, 3, 4])
     ax_tl.set_yticklabels(["raw_a11y", "interaction", "reel_hidden", "reel_shown", "session"])
     ax_tl.set_ylabel("event type")
-    ax_tl.set_title(f"Scroll timeline from {t0.isoformat()}")
+    ax_tl.set_title(f"Scroll timeline ({tz_name})")
     ax_tl.grid(True, axis="x", alpha=0.3)
 
     legend = [
         Line2D([0], [0], marker="o", color="w", markerfacecolor=c, markersize=8, label=k)
         for k, c in EVENT_COLORS.items()
-        if any(e.type == k for e in events)
+        if any(e.type == k for e in local_events)
     ]
     ax_tl.legend(handles=legend, loc="upper right", fontsize=8, ncol=3)
 
-    # Dwell bars for closed impressions (same time origin / xlim as top panel)
     impressions = [i for s in sessions for i in s.impressions if i.dwell_ms is not None]
     if impressions:
-        dx = [(i.shown_at - t0).total_seconds() for i in impressions]
+        dx = [i.shown_at.astimezone(tz) for i in impressions]
         dw = [i.dwell_ms / 1000.0 for i in impressions]
         bar_colors = ["#bbbbbb" if i.chrome else "#1f77b4" for i in impressions]
-        bar_w = max(0.4, x_max / max(len(dx) * 40, 1))
-        ax_dwell.bar(dx, dw, width=bar_w, color=bar_colors, align="edge", zorder=3)
+        bar_w_days = max(span_s / max(len(dx) * 40, 1), 30.0) / 86400.0
+        ax_dwell.bar(dx, dw, width=bar_w_days, color=bar_colors, align="edge", zorder=3)
         ax_dwell.set_ylabel("dwell (s)")
         ax_dwell.set_title("Impression dwell (grey = chrome/noisy caption)")
         ax_dwell.grid(True, axis="y", alpha=0.3)
     else:
         ax_dwell.text(0.5, 0.5, "No closed impressions", transform=ax_dwell.transAxes, ha="center")
 
-    ax_dwell.set_xlabel(f"seconds since {t0.strftime('%H:%M:%S')} UTC")
-    ax_tl.set_xlim(-x_pad, x_max + x_pad)
-    # sharex=True keeps ax_dwell aligned; reinforce after bar plot autoscaling
-    ax_dwell.set_xlim(-x_pad, x_max + x_pad)
+    locator = mdates.AutoDateLocator(minticks=5, maxticks=12)
+    if span_s < 36 * 3600:
+        formatter = mdates.DateFormatter("%H:%M", tz=tz)
+        ax_dwell.set_xlabel(f"time ({tz_name}) — {t0.strftime('%Y-%m-%d')}")
+    else:
+        formatter = mdates.ConciseDateFormatter(locator, tz=tz)
+        ax_dwell.set_xlabel(f"date / time ({tz_name})")
+    for ax in (ax_tl, ax_dwell):
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(formatter)
+        ax.set_xlim(t0 - x_pad, t1 + x_pad)
 
+    fig.autofmt_xdate()
     fig.tight_layout()
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
@@ -385,6 +408,11 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path, default=None, help="Save figure PNG/PDF")
     parser.add_argument("--no-show", action="store_true", help="Do not open an interactive window")
     parser.add_argument("--no-plot", action="store_true", help="Stats only")
+    parser.add_argument(
+        "--tz",
+        default="Europe/Copenhagen",
+        help="IANA timezone for x-axis (default Europe/Copenhagen; use UTC for UTC)",
+    )
     args = parser.parse_args()
 
     if not args.jsonl.exists():
@@ -405,7 +433,7 @@ def main() -> int:
         out = args.output
         if out is None and args.no_show:
             out = args.jsonl.with_suffix(".timeline.png")
-        plot_timeline(events, sessions, out=out, show=not args.no_show)
+        plot_timeline(events, sessions, out=out, show=not args.no_show, tz_name=args.tz)
     return 0
 
 
