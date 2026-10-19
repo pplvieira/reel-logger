@@ -66,12 +66,16 @@ Enable Accessibility for **Scroll logger (Instagram)**, turn logging on, scroll 
 .\scripts\sync-day.ps1
 ```
 
-Visualize (x-axis = absolute clock; default `--tz Europe/Copenhagen`, or `--tz UTC`):
+Visualize (default `--tz Europe/Copenhagen`, or `--tz UTC`):
 
 ```powershell
 pip install -e ".[viz]"
-# L3 merged (recommended for analysis)
+# L3 timeline (absolute clock)
 python scripts\visualize_merged.py data\derived\<run_id>\merged.csv --hide-dyi-only --tz Europe/Copenhagen
+# L3 dwell histogram (stacked by match_status)
+python scripts\plot_dwell_hist.py data\derived\<run_id>\merged.csv --kde
+# L3 average-day 24h profile
+python scripts\plot_circadian.py data\derived\<run_id>\merged.csv --metric count --smooth kde
 # Raw phone JSONL (debug / capture QA)
 python scripts\visualize_queue.py data\phone-queue\events-….jsonl --clean --tz Europe/Copenhagen
 ```

@@ -216,6 +216,27 @@ python scripts\visualize_merged.py data\derived\<run_id>\merged.csv `
 python scripts\visualize_queue.py data\phone-queue\events-YYYYMMDD-HHMMSS.jsonl --clean --tz Europe/Copenhagen
 ```
 
+- Dwell histogram (stacked by `match_status`; optional linear `--kde`):
+
+```powershell
+python scripts\plot_dwell_hist.py data\derived\<run_id>\merged.csv
+python scripts\plot_dwell_hist.py data\derived\<run_id>\merged.csv `
+  --bin-width-s 5 --kde --max-dwell-s 120 --no-show -o data\derived\<run_id>\dwell_hist.png
+# --no-stack-by-status  |  --statuses matched,logger_only  |  --bins 40
+```
+
+- Average-day 24h barplot (`count` / `watch_time_s` / `reels_per_minute`; wrap-around smooth):
+
+```powershell
+python scripts\plot_circadian.py data\derived\<run_id>\merged.csv --metric count --tz Europe/Copenhagen
+python scripts\plot_circadian.py data\derived\<run_id>\merged.csv `
+  --metric watch_time_s --smooth kde --error sem --no-show -o data\derived\<run_id>\circadian_watch.png
+# --smooth moving --smooth-window 3  |  --smooth-bw 1.5  |  --metric reels_per_minute
+# --error sd|sem  (per-hour SD or SEM across active days; needs ≥2 days)
+```
+
+Mean is over **active calendar days** in the filtered data (local `--tz`). Shared pastel styling lives in `scripts/viz_common.py`.
+
 - Notebook: `notebooks/pace_report.ipynb` (set `BASE` / `USER_ID` as needed)
 
 Layers and CSV columns: [architecture.md](architecture.md).

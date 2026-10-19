@@ -12,6 +12,9 @@ and this project uses [Semantic Versioning](https://semver.org/).
 - Layered offline pipeline: `preprocess_queue.py` (L2) and `merge_sources.py` (L3); raw archives immutable
 - Android `0.1.1-android`: `raw_a11y` nodes with bounds + `texts_sample`; on-device identity marked as hints
 - `visualize_merged.py` for L3 `merged.csv` timelines (match status + logger dwell)
+- `plot_dwell_hist.py` — dwell histogram stacked by `match_status`, optional KDE
+- `plot_circadian.py` — average-day 24h bars (`count` / `watch_time_s` / `reels_per_minute`) with wrap-around `--smooth kde|moving` and `--error sd|sem`
+- Shared pastel styling / CSV helpers in `scripts/viz_common.py`
 - PC phrase identity in preprocess (`Reel by X`, profile-picture labels, …) with chrome-token denylist
 
 ### Changed

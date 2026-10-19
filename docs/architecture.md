@@ -94,10 +94,13 @@ Also written: `preprocess_manifest.json` (counts, flags, input path).
 
 | Script | Input | Notes |
 | --- | --- | --- |
-| `scripts/visualize_merged.py` | L3 `merged.csv` | Preferred analysis figure; `--hide-dyi-only`, `--matched-only` |
+| `scripts/visualize_merged.py` | L3 `merged.csv` | Timeline; `--hide-dyi-only`, `--matched-only` |
+| `scripts/plot_dwell_hist.py` | L3 `merged.csv` | Dwell histogram; `--stack-by-status`, `--kde` |
+| `scripts/plot_circadian.py` | L3 `merged.csv` | Average-day 24h bars; `--metric`, `--smooth`, `--error sd\|sem` |
 | `scripts/visualize_queue.py` | L0 JSONL | Capture QA / debug |
+| `scripts/viz_common.py` | — | Shared load/filter + pastel style for hist/circadian |
 
-Both plot **absolute clock** x-ticks via `--tz` (default `Europe/Copenhagen`; pass `UTC` for UTC).
+Timeline scripts use **absolute clock** x-ticks via `--tz` (default `Europe/Copenhagen`; pass `UTC` for UTC). Circadian uses local hour-of-day in `--tz`.
 
 ### JSONL eras (backwards compatible)
 
@@ -148,6 +151,8 @@ See [event-schema.md](event-schema.md).
 | `scripts/merge_sources.py` | Offline L3 CLI |
 | `scripts/compare_logger_dyi.py` | Thin alias: preprocess → merge |
 | `scripts/visualize_merged.py` | L3 timeline |
+| `scripts/plot_dwell_hist.py` | L3 dwell histogram |
+| `scripts/plot_circadian.py` | L3 average-day 24h profile |
 | `scripts/visualize_queue.py` | L0 timeline (debug) |
 
 ## Data flow (API path)
